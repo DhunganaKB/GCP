@@ -32,10 +32,12 @@ jobs:
 - Manual workflow dispatch
 
 **What it does:**
-1. Builds Docker image tagged with git SHA + `latest`
-2. Pushes to Artifact Registry (`youtube-analyst` repository)
-3. Deploys to Cloud Run as `support-triage` service
-4. Prints the live service URL
+1. **Test Job:** Calls the reusable build workflow to run tests
+2. **Deploy Job (only if tests pass):**
+   - Builds Docker image tagged with git SHA + `latest`
+   - Pushes to Artifact Registry (`youtube-analyst` repository)
+   - Deploys to Cloud Run as `support-triage` service
+   - Prints the live service URL
 
 **Configuration:**
 - **Service Name:** `support-triage`
