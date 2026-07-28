@@ -1,0 +1,47 @@
+# Build and Test
+#
+# This is a REUSABLE workflow.
+# It is not triggered directly — other workflows call it via `uses:`.
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: "Python version to use"
+        type: string
+        default: "3.12"
+      working-directory:
+        description: "Directory containing requirements.txt"
+        type: string
+        default: "."
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      # ── 2. Python ──────────────────────────────────────────────────────────
+      - name: Set up Python ${{ inputs.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      # ── 3. Install dependencies ────────────────────────────────────────────
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # ── 4. Verify the package is importable ────────────────────────────────
+      # A quick sanity check — if this fails, something is structurally broken
+      # (missing __init__.py, bad import, syntax error at module level, etc.)
+      - name: Verify package imports
+        run: python -c "import app.main; print('Package import OK')"
