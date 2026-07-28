@@ -1,5 +1,5 @@
-# Build and Test
-#
+name: Build and Test
+
 # This is a REUSABLE workflow.
 # It is not triggered directly — other workflows call it via `uses:`.
 on:
