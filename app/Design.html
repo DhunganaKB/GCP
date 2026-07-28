@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parallel Support Triage System Design</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.15);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --accent: #a855f7;
+            --border: #334155;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+        }
+
+        .card-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: #f1f5f9;
+            border-left: 4px solid var(--primary);
+            padding-left: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .badge {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-parallel {
+            background-color: rgba(168, 85, 247, 0.2);
+            color: #d8b4fe;
+            border: 1px solid rgba(168, 85, 247, 0.4);
+        }
+
+        .badge-sequential {
+            background-color: rgba(99, 102, 241, 0.2);
+            color: #c7d2fe;
+            border: 1px solid rgba(99, 102, 241, 0.4);
+        }
+
+        p {
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            color: #f472b6;
+            font-size: 0.9em;
+        }
+
+        pre {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            background-color: rgba(0, 0, 0, 0.4);
+            padding: 1.25rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            color: #e2e8f0;
+            margin-top: 1rem;
+        }
+
+        .agent-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .agent-box {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .agent-box:hover {
+            transform: translateY(-2px);
+            border-color: var(--primary);
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        .agent-name {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--text-main);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .agent-icon {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--accent);
+            display: inline-block;
+        }
+
+        .options-list {
+            list-style: none;
+            margin-top: 0.75rem;
+        }
+
+        .options-list li {
+            font-size: 0.85rem;
+            margin-bottom: 0.4rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .options-list li::before {
+            content: "•";
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .flowchart-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1rem 0;
+        }
+
+        .flow-node {
+            background-color: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            text-align: center;
+            min-width: 250px;
+        }
+
+        .flow-node.active-node {
+            border-color: var(--primary);
+            box-shadow: 0 0 10px var(--primary-glow);
+        }
+
+        .flow-arrow {
+            color: var(--primary);
+            font-size: 1.5rem;
+            margin: 0.5rem 0;
+            font-weight: bold;
+        }
+
+        .parallel-branches {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            gap: 1rem;
+            margin: 0.5rem 0;
+        }
+
+        .branch {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+
+        .branch-node {
+            background-color: rgba(168, 85, 247, 0.1);
+            border: 1px solid rgba(168, 85, 247, 0.4);
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.85rem;
+            text-align: center;
+            width: 100%;
+            font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+            .parallel-branches {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            .flow-arrow {
+                margin: 0.25rem 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Parallel Multi-Agent Triage</h1>
+            <p class="subtitle">System Architecture & Pipeline Execution Model</p>
+        </header>
+
+        <!-- Application Overview -->
+        <section class="card">
+            <div class="card-title">
+                Application Overview
+                <span class="badge badge-sequential">Sequential Orchestrator</span>
+            </div>
+            <p>
+                This application implements a high-performance customer support ticket triage pipeline utilizing the 
+                <strong>Google Agent Development Kit (ADK)</strong> and <strong>Gemini 2.5</strong>. 
+                Instead of running sequentially or using single flat prompting, the system decouples distinct analysis tasks into a team of specialized sub-agents. 
+            </p>
+            <p>
+                These sub-agents evaluate the ticket **concurrently** in a parallel phase to minimize latency, writing their conclusions to a shared state before a specialized **Router Agent** synthesizes the final routing decision and action steps.
+            </p>
+        </section>
+
+        <!-- Orchestration Workflow Diagram -->
+        <section class="card">
+            <div class="card-title">Orchestration Flowchart</div>
+            <div class="flowchart-container">
+                <div class="flow-node active-node">
+                    1. Ticket Input Received<br>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">via POST /triage</span>
+                </div>
+                <div class="flow-arrow">▼</div>
+                <div class="flow-node">
+                    triage_root (SequentialAgent)<br>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">Initializes Session State</span>
+                </div>
+                <div class="flow-arrow">▼</div>
+                
+                <div style="text-align: center; color: var(--accent); font-size: 0.8rem; font-weight: bold; margin-bottom: 0.2rem;">
+                    STEP 1: Parallel Fan-Out (Concurrent Execution)
+                </div>
+                <div class="parallel-branches">
+                    <div class="branch">
+                        <div class="branch-node">Sentiment Agent</div>
+                        <div style="font-size: 0.75rem; margin-top: 0.25rem; color: var(--text-muted)">sentiment_result</div>
+                    </div>
+                    <div class="branch">
+                        <div class="branch-node">Category Agent</div>
+                        <div style="font-size: 0.75rem; margin-top: 0.25rem; color: var(--text-muted)">category_result</div>
+                    </div>
+                    <div class="branch">
+                        <div class="branch-node">Priority Agent</div>
+                        <div style="font-size: 0.75rem; margin-top: 0.25rem; color: var(--text-muted)">priority_result</div>
+                    </div>
+                    <div class="branch">
+                        <div class="branch-node">Reply Agent</div>
+                        <div style="font-size: 0.75rem; margin-top: 0.25rem; color: var(--text-muted)">reply_result</div>
+                    </div>
+                </div>
+
+                <div class="flow-arrow">▼</div>
+                <div style="text-align: center; color: var(--primary); font-size: 0.8rem; font-weight: bold; margin-bottom: 0.2rem;">
+                    STEP 2: Synthesis Phase
+                </div>
+                <div class="flow-node active-node">
+                    router (LlmAgent)<br>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">Merges worker state keys</span>
+                </div>
+                <div class="flow-arrow">▼</div>
+                <div class="flow-node" style="border-color: var(--success);">
+                    Triage Decision JSON<br>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">Final routed queue & escalation flag</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sub-Agent Breakdown -->
+        <section class="card">
+            <div class="card-title">
+                Detailed Worker Sub-Agents
+                <span class="badge badge-parallel">Parallel Execution</span>
+            </div>
+            <p>
+                Each worker sub-agent executes independently, targeting only the raw ticket text and populating its dedicated output key in the shared session state:
+            </p>
+
+            <div class="agent-grid">
+                <!-- Sentiment Agent -->
+                <div class="agent-box">
+                    <div class="agent-name">
+                        <span class="agent-icon" style="background-color: var(--accent);"></span>
+                        Sentiment Agent
+                    </div>
+                    <p style="font-size: 0.8rem; margin-bottom: 0.5rem;">Judges emotional tone of the ticket.</p>
+                    <div style="font-size: 0.75rem; color: var(--accent); font-weight: bold;">State key: <code>sentiment_result</code></div>
+                    <ul class="options-list">
+                        <li><strong>Sentiment Options:</strong></li>
+                        <li style="margin-left: 0.75rem;"><code>positive</code></li>
+                        <li style="margin-left: 0.75rem;"><code>neutral</code></li>
+                        <li style="margin-left: 0.75rem;"><code>negative</code></li>
+                        <li style="margin-left: 0.75rem;"><code>angry</code></li>
+                        <li><strong>Output fields:</strong> confidence, evidence</li>
+                    </ul>
+                </div>
+
+                <!-- Category Agent -->
+                <div class="agent-box">
+                    <div class="agent-name">
+                        <span class="agent-icon" style="background-color: var(--primary);"></span>
+                        Category Agent
+                    </div>
+                    <p style="font-size: 0.8rem; margin-bottom: 0.5rem;">Classifies support category.</p>
+                    <div style="font-size: 0.75rem; color: var(--primary); font-weight: bold;">State key: <code>category_result</code></div>
+                    <ul class="options-list">
+                        <li><strong>Category Options:</strong></li>
+                        <li style="margin-left: 0.75rem;"><code>Billing</code></li>
+                        <li style="margin-left: 0.75rem;"><code>Technical</code></li>
+                        <li style="margin-left: 0.75rem;"><code>How-To</code></li>
+                        <li style="margin-left: 0.75rem;"><code>Feature-Request</code></li>
+                        <li style="margin-left: 0.75rem;"><code>Outage</code></li>
+                        <li style="margin-left: 0.75rem;"><code>Account</code> / <code>Other</code></li>
+                    </ul>
+                </div>
+
+                <!-- Priority Agent -->
+                <div class="agent-box">
+                    <div class="agent-name">
+                        <span class="agent-icon" style="background-color: var(--warning);"></span>
+                        Priority Agent
+                    </div>
+                    <p style="font-size: 0.8rem; margin-bottom: 0.5rem;">Scores ticket urgency & severity.</p>
+                    <div style="font-size: 0.75rem; color: var(--warning); font-weight: bold;">State key: <code>priority_result</code></div>
+                    <ul class="options-list">
+                        <li><strong>Priority Tiers:</strong></li>
+                        <li style="margin-left: 0.75rem;"><code>P1</code> (Critical / Outage)</li>
+                        <li style="margin-left: 0.75rem;"><code>P2</code> (High)</li>
+                        <li style="margin-left: 0.75rem;"><code>P3</code> (Normal)</li>
+                        <li style="margin-left: 0.75rem;"><code>P4</code> (Low)</li>
+                        <li><strong>Output fields:</strong> sla_hours, reason</li>
+                    </ul>
+                </div>
+
+                <!-- Reply Agent -->
+                <div class="agent-box">
+                    <div class="agent-name">
+                        <span class="agent-icon" style="background-color: var(--success);"></span>
+                        Reply Agent
+                    </div>
+                    <p style="font-size: 0.8rem; margin-bottom: 0.5rem;">Drafts initial responses.</p>
+                    <div style="font-size: 0.75rem; color: var(--success); font-weight: bold;">State key: <code>reply_result</code></div>
+                    <ul class="options-list">
+                        <li><strong>Constraints:</strong></li>
+                        <li>Under 90 words</li>
+                        <li>Acknowledge issue</li>
+                        <li>Set direct expectations</li>
+                        <li>No fake promises</li>
+                        <li>Professional & warm</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Router Synthesis Section -->
+        <section class="card">
+            <div class="card-title">
+                The Router & Synthesis Phase
+                <span class="badge badge-sequential" style="background-color: rgba(16, 185, 129, 0.2); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.4);">Final Synthesis</span>
+            </div>
+            <p>
+                The <strong>Router Agent</strong> acts as the final decision maker. It is configured as the second sub-agent of the main <code>SequentialAgent</code>. Once the parallel branch finishes executing, the Router accesses the shared session state to read all specialist results.
+            </p>
+            <p>
+                It applies smart orchestration rules to merge these outputs into a single action-oriented decision schema:
+            </p>
+            <pre>{
+  "category": "Billing",
+  "priority": "P2",
+  "sentiment": "negative",
+  "route_to": "Finance Queue",
+  "escalate": true,
+  "sla_hours": 24,
+  "suggested_reply": "[Warm greeting] We received your message about the duplicate charge...",
+  "summary": "Customer reports billing duplicate charge; request escalated to Finance Team."
+}</pre>
+        </section>
+    </div>
+</body>
+</html>

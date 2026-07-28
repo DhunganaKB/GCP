@@ -1,0 +1,19 @@
+# Keep secrets and local cruft out of the build context / image.
+.env
+.env.*
+*.env
+
+.venv/
+venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+
+.git/
+.gitignore
+.DS_Store
+
+# Docs / design assets not needed at runtime.
+README.md
+app/Design.html
