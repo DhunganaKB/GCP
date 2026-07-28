@@ -16,9 +16,18 @@ env:
   IMAGE: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/youtube-analyst/app
 
 jobs:
+  # ── Run tests first using the reusable build workflow ──────────────────────
+  test:
+    name: Test Application
+    uses: ./.github/workflows/build.yml
+    with:
+      python-version: "3.12"
+
+  # ── Only deploy if tests pass ──────────────────────────────────────────────
   build-and-deploy:
     name: Build, Push, Deploy
     runs-on: ubuntu-latest
+    needs: test  # Wait for tests to pass before deploying
 
     steps:
       # ── 1. Checkout ──────────────────────────────────────────────────────────
