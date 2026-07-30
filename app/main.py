@@ -6,9 +6,11 @@ Docs: http://127.0.0.1:8000/docs
 
 import os
 import time
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, model_validator
 
 # Load GOOGLE_API_KEY from .env BEFORE the ADK/genai clients initialize.
@@ -41,6 +43,9 @@ class TriageRequest(BaseModel):
         return self
 
 
+STATIC_DIR = Path(__file__).parent / "static"
+
+
 @app.get("/")
 def root():
     return {
@@ -48,10 +53,17 @@ def root():
         "framework": "google-adk",
         "model": os.getenv("TRIAGE_MODEL", "gemini-2.5-flash"),
         "endpoints": {
+            "GET /ui": "interactive test UI",
             "GET /tickets": "list synthetic sample tickets",
             "POST /triage": "run triage on a ticket_id or ticket_text",
         },
     }
+
+
+@app.get("/ui", include_in_schema=False)
+def ui():
+    """Serve the interactive tester frontend."""
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/tickets")

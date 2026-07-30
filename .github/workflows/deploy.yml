@@ -81,7 +81,7 @@ jobs:
             --max-instances 10 \
             --set-env-vars "GOOGLE_CLOUD_PROJECT=${{ env.PROJECT_ID }}" \
             --set-env-vars "GOOGLE_CLOUD_LOCATION=global" \
-            --set-env-vars "GOOGLE_GENAI_USE_VERTEXAI=1" \
+            --set-env-vars "GOOGLE_GENAI_USE_VERTEXAI=0" \
             --set-secrets "GOOGLE_API_KEY=GOOGLE_API_KEY:latest"
 
       # ── 8. Print the live service URL ────────────────────────────────────────

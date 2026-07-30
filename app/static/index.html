@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Support Triage — Tester</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --card-2: #172033;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --accent: #a855f7;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 24px;
+    }
+    .wrap { max-width: 1000px; margin: 0 auto; }
+    header { margin-bottom: 24px; }
+    h1 { font-size: 1.6rem; font-weight: 700; }
+    h1 .dot { color: var(--primary); }
+    .sub { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .panel h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 14px; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    .tab {
+      background: var(--card-2); border: 1px solid var(--border); color: var(--muted);
+      padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.9rem;
+    }
+    .tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .tickets { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+    .ticket {
+      text-align: left; background: var(--card-2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px; cursor: pointer; transition: border-color .15s;
+    }
+    .ticket:hover { border-color: var(--primary); }
+    .ticket.sel { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+    .ticket .id { font-size: 0.72rem; color: var(--accent); font-weight: 600; }
+    .ticket .subj { font-size: 0.9rem; font-weight: 600; margin: 4px 0; }
+    .ticket .cust { font-size: 0.75rem; color: var(--muted); }
+    textarea {
+      width: 100%; min-height: 120px; background: var(--card-2); color: var(--text);
+      border: 1px solid var(--border); border-radius: 10px; padding: 12px; font: inherit; resize: vertical;
+    }
+    .hidden { display: none; }
+    .preview { margin-top: 14px; font-size: 0.85rem; color: var(--muted); white-space: pre-wrap;
+      background: var(--card-2); border: 1px dashed var(--border); border-radius: 10px; padding: 12px; }
+    button.run {
+      margin-top: 16px; background: var(--primary); color: #fff; border: none;
+      padding: 12px 24px; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer;
+    }
+    button.run:hover { background: var(--primary-hover); }
+    button.run:disabled { opacity: .5; cursor: not-allowed; }
+    .status { margin-top: 12px; font-size: 0.85rem; color: var(--muted); min-height: 1.2em; }
+    .status.err { color: var(--danger); }
+
+    .decision { display: grid; grid-template-columns: 1fr; gap: 14px; }
+    .badges { display: flex; flex-wrap: wrap; gap: 8px; }
+    .badge { font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); }
+    .badge.p1 { background: rgba(239,68,68,.15); color: #fca5a5; border-color: var(--danger); }
+    .badge.p2 { background: rgba(245,158,11,.15); color: #fcd34d; border-color: var(--warning); }
+    .badge.p3 { background: rgba(99,102,241,.15); color: #a5b4fc; border-color: var(--primary); }
+    .badge.p4 { background: rgba(148,163,184,.12); color: var(--muted); }
+    .badge.esc { background: rgba(239,68,68,.2); color: #fca5a5; border-color: var(--danger); }
+    .badge.ok { background: rgba(16,185,129,.15); color: #6ee7b7; border-color: var(--success); }
+    .badge.neutral { background: var(--card-2); color: var(--muted); }
+    .kv { font-size: 0.9rem; } .kv b { color: var(--muted); font-weight: 600; }
+    .summary { font-size: 0.95rem; }
+    .reply { background: var(--card-2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; white-space: pre-wrap; font-size: 0.9rem; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+    .agent { background: var(--card-2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+    .agent h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); margin-bottom: 8px; }
+    .agent .big { font-size: 1.1rem; font-weight: 700; }
+    .agent .meta { font-size: 0.78rem; color: var(--muted); margin-top: 6px; }
+    .elapsed { font-size: 0.8rem; color: var(--muted); }
+    details { margin-top: 10px; } summary { cursor: pointer; color: var(--muted); font-size: 0.8rem; }
+    pre.json { background: #0b1120; border: 1px solid var(--border); border-radius: 8px; padding: 12px; overflow-x: auto; font-size: 0.78rem; margin-top: 8px; }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Support Triage <span class="dot">●</span> Tester</h1>
+      <div class="sub">Fan out one ticket to four parallel agents, then a router synthesizes the decision.</div>
+    </header>
+
+    <div class="panel">
+      <h2>1. Choose input</h2>
+      <div class="tabs">
+        <button class="tab active" id="tab-sample" onclick="setMode('sample')">Sample ticket</button>
+        <button class="tab" id="tab-free" onclick="setMode('free')">Free text</button>
+      </div>
+
+      <div id="sampleArea">
+        <div class="tickets" id="tickets">Loading sample tickets…</div>
+        <div class="preview hidden" id="preview"></div>
+      </div>
+
+      <div id="freeArea" class="hidden">
+        <textarea id="freeText" placeholder="Paste a customer message, e.g. 'I was double charged $99 and I am really upset, refund now.'"></textarea>
+      </div>
+
+      <button class="run" id="runBtn" onclick="runTriage()">Run triage</button>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="panel hidden" id="resultPanel">
+      <h2>2. Triage decision <span class="elapsed" id="elapsed"></span></h2>
+      <div class="decision" id="decision"></div>
+
+      <h2 style="margin-top:24px">3. Independent agents (ran in parallel)</h2>
+      <div class="grid" id="agents"></div>
+
+      <details>
+        <summary>Raw JSON response</summary>
+        <pre class="json" id="raw"></pre>
+      </details>
+    </div>
+  </div>
+
+<script>
+  let mode = "sample";
+  let selectedId = null;
+
+  function setMode(m) {
+    mode = m;
+    document.getElementById("tab-sample").classList.toggle("active", m === "sample");
+    document.getElementById("tab-free").classList.toggle("active", m === "free");
+    document.getElementById("sampleArea").classList.toggle("hidden", m !== "sample");
+    document.getElementById("freeArea").classList.toggle("hidden", m !== "free");
+  }
+
+  async function loadTickets() {
+    try {
+      const res = await fetch("../tickets");
+      const data = await res.json();
+      const box = document.getElementById("tickets");
+      box.innerHTML = "";
+      data.tickets.forEach(t => {
+        const el = document.createElement("button");
+        el.className = "ticket";
+        el.innerHTML = `<div class="id">${t.id}</div><div class="subj">${escapeHtml(t.subject)}</div><div class="cust">${escapeHtml(t.customer)} · ${escapeHtml(t.channel)}</div>`;
+        el.onclick = () => selectTicket(t, el);
+        box.appendChild(el);
+      });
+    } catch (e) {
+      document.getElementById("tickets").textContent = "Could not load tickets: " + e.message;
+    }
+  }
+
+  function selectTicket(t, el) {
+    selectedId = t.id;
+    document.querySelectorAll(".ticket").forEach(x => x.classList.remove("sel"));
+    el.classList.add("sel");
+    const p = document.getElementById("preview");
+    p.classList.remove("hidden");
+    p.textContent = `Subject: ${t.subject}\n\n${t.body}`;
+  }
+
+  async function runTriage() {
+    const btn = document.getElementById("runBtn");
+    const status = document.getElementById("status");
+    status.className = "status";
+
+    let body;
+    if (mode === "sample") {
+      if (!selectedId) { status.className = "status err"; status.textContent = "Pick a sample ticket first."; return; }
+      body = { ticket_id: selectedId };
+    } else {
+      const text = document.getElementById("freeText").value.trim();
+      if (!text) { status.className = "status err"; status.textContent = "Enter some ticket text first."; return; }
+      body = { ticket_text: text };
+    }
+
+    btn.disabled = true;
+    status.innerHTML = `<span class="spinner"></span>Running 4 agents in parallel + router…`;
+    document.getElementById("resultPanel").classList.add("hidden");
+
+    try {
+      const res = await fetch("../triage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const msg = data.detail ? (Array.isArray(data.detail) ? data.detail.map(d => d.msg).join("; ") : data.detail) : ("HTTP " + res.status);
+        throw new Error(msg);
+      }
+      render(data);
+      status.textContent = "";
+    } catch (e) {
+      status.className = "status err";
+      status.textContent = "Error: " + e.message;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function render(data) {
+    const d = data.decision || {};
+    const w = data.workers || {};
+    document.getElementById("elapsed").textContent = data.elapsed_ms != null ? `· ${data.elapsed_ms} ms` : "";
+
+    const pr = (d.priority || "").toUpperCase();
+    const prClass = { P1: "p1", P2: "p2", P3: "p3", P4: "p4" }[pr] || "neutral";
+    const escBadge = d.escalate
+      ? `<span class="badge esc">⚠ ESCALATE</span>`
+      : `<span class="badge ok">no escalation</span>`;
+
+    document.getElementById("decision").innerHTML = `
+      <div class="badges">
+        <span class="badge ${prClass}">${pr || "?"}</span>
+        <span class="badge neutral">${escapeHtml(d.category || "?")}</span>
+        <span class="badge neutral">${escapeHtml(d.sentiment || "?")}</span>
+        ${escBadge}
+      </div>
+      <div class="kv"><b>Route to:</b> ${escapeHtml(d.route_to || "—")} &nbsp;·&nbsp; <b>SLA:</b> ${d.sla_hours != null ? d.sla_hours + "h" : "—"}</div>
+      <div class="summary">${escapeHtml(d.summary || "")}</div>
+      <div>
+        <div class="kv" style="margin-bottom:6px"><b>Suggested reply</b></div>
+        <div class="reply">${escapeHtml(d.suggested_reply || "")}</div>
+      </div>`;
+
+    const sc = w.sentiment || {}, ca = w.category || {}, pri = w.priority || {}, rep = w.reply || {};
+    document.getElementById("agents").innerHTML = `
+      ${agentCard("Sentiment", sc.sentiment, `confidence ${fmtConf(sc.confidence)}${sc.evidence ? " · “" + escapeHtml(sc.evidence) + "”" : ""}`)}
+      ${agentCard("Category", ca.category, `${escapeHtml(ca.subtopic || "")}${ca.confidence != null ? " · conf " + fmtConf(ca.confidence) : ""}`)}
+      ${agentCard("Priority", pri.priority, `SLA ${pri.sla_hours != null ? pri.sla_hours + "h" : "—"}${pri.reason ? " · " + escapeHtml(pri.reason) : ""}`)}
+      ${agentCard("Reply draft", "✎", escapeHtml((rep.draft_reply || "").slice(0, 160) + ((rep.draft_reply || "").length > 160 ? "…" : "")))}`;
+
+    document.getElementById("raw").textContent = JSON.stringify(data, null, 2);
+    document.getElementById("resultPanel").classList.remove("hidden");
+  }
+
+  function agentCard(title, big, meta) {
+    return `<div class="agent"><h3>${title}</h3><div class="big">${escapeHtml(String(big ?? "—"))}</div><div class="meta">${meta || ""}</div></div>`;
+  }
+  function fmtConf(c) { return c == null ? "—" : (typeof c === "number" ? c.toFixed(2) : c); }
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m])); }
+
+  loadTickets();
+</script>
+</body>
+</html>
